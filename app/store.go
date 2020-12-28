@@ -1,12 +1,13 @@
 package main
 
 import (
-	"context"
+	"bytes"
+	"encoding/gob"
 	"errors"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 // DirectoryDocument is a MongoDB document struct for a directory document
@@ -15,42 +16,61 @@ type DirectoryDocument struct {
 	Assets []Asset `json:"assets"`
 }
 
-var collection *mongo.Collection
-
-func connectToDatabase() {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
-
-	client, err := mongo.Connect(context.TODO(), clientOptions)
-	if err != nil {
-		logger(err)
+func doesDirectoryExist() bool {
+	describeTableInput := &dynamodb.DescribeTableInput{
+		TableName: aws.String(directoryName),
 	}
-
-	err = client.Ping(context.TODO(), nil)
-	if err != nil {
-		logger(err)
-	}
-
-	collection = client.Database("diff-hackerone").Collection("directory")
+	_, err := dynamoClient.DescribeTable(describeTableInput)
+	return err == nil
 }
 
-func getStoredDirectoryCount() int {
-	count, err := collection.CountDocuments(context.TODO(), bson.M{}, nil)
+func createNewDirectory(directory map[string][]Asset) {
+	logger("Creating " + directoryName + " and inserting all items")
+
+	createTableInput := &dynamodb.CreateTableInput{
+		AttributeDefinitions: []*dynamodb.AttributeDefinition{
+			{
+				AttributeName: aws.String("Name"),
+				AttributeType: aws.String("S"),
+			},
+			{
+				AttributeName: aws.String("Assets"),
+				AttributeType: aws.String("B"),
+			},
+		},
+		KeySchema: []*dynamodb.KeySchemaElement{
+			{
+				AttributeName: aws.String("Name"),
+				KeyType:       aws.String("HASH"),
+			},
+		},
+		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
+			ReadCapacityUnits:  aws.Int64(2),
+			WriteCapacityUnits: aws.Int64(2),
+		},
+		TableName: aws.String(directoryName),
+	}
+
+	_, err := dynamoClient.CreateTable(createTableInput)
 	if err != nil {
 		logger(err)
 	}
-	return int(count)
-}
-
-func insertFullDirectory(directory map[string][]Asset) {
-	logger("Inserting full directory into diff-hackerone.directory")
 
 	for name, assets := range directory {
 		directoryDocument := DirectoryDocument{
 			Name:   name,
 			Assets: assets,
 		}
+		dynamoDocument, err := dynamodbattribute.MarshalMap(directoryDocument)
+		if err != nil {
+			logger(err)
+		}
 
-		_, err := collection.InsertOne(context.TODO(), directoryDocument)
+		putItemInput := &dynamodb.PutItemInput{
+			Item:      dynamoDocument,
+			TableName: aws.String(directoryName),
+		}
+		_, err = dynamoClient.PutItem(putItemInput)
 		if err != nil {
 			logger(err)
 		}
@@ -58,22 +78,24 @@ func insertFullDirectory(directory map[string][]Asset) {
 }
 
 func updateDirectory(directory map[string][]Asset) {
-	logger("Updating local directory")
+	logger("Updating " + directoryName)
 
 	// Get full existing directory
-	var existingDirectoryList []DirectoryDocument
-	cursor, err := collection.Find(context.TODO(), bson.M{})
+	scanInput := &dynamodb.ScanInput{
+		TableName: aws.String(directoryName),
+	}
+	dynamoScan, err := dynamoClient.Scan(scanInput)
 	if err != nil {
 		logger(err)
 	}
-	err = cursor.All(context.TODO(), &existingDirectoryList)
-	if err != nil {
-		logger(err)
-	}
-
 	existingDirectory := make(map[string][]Asset)
-	for _, existingDirectoryDocument := range existingDirectoryList {
-		existingDirectory[existingDirectoryDocument.Name] = existingDirectoryDocument.Assets
+	for _, dynamoItem := range dynamoScan.Items {
+		directoryDocument := DirectoryDocument{}
+		err := dynamodbattribute.UnmarshalMap(dynamoItem, &directoryDocument)
+		if err != nil {
+			logger(err)
+		}
+		existingDirectory[directoryDocument.Name] = directoryDocument.Assets
 	}
 
 	// Search for changes
@@ -179,18 +201,44 @@ func insertNewProgram(name string, assets []Asset) {
 		Name:   name,
 		Assets: assets,
 	}
+	dynamoDocument, err := dynamodbattribute.MarshalMap(directoryDocument)
+	if err != nil {
+		logger(err)
+	}
 
-	_, err := collection.InsertOne(context.TODO(), directoryDocument)
+	putItemInput := &dynamodb.PutItemInput{
+		Item:      dynamoDocument,
+		TableName: aws.String(directoryName),
+	}
+	_, err = dynamoClient.PutItem(putItemInput)
 	if err != nil {
 		logger(err)
 	}
 }
 
 func updateProgram(name string, assets []Asset) {
-	filter := bson.M{"name": name}
-	update := bson.D{{"$set", bson.D{{"assets", assets}}}}
+	var assetsBuffer bytes.Buffer
+	err := gob.NewEncoder(&assetsBuffer).Encode(assets)
+	if err != nil {
+		logger(err)
+	}
 
-	_, err := collection.UpdateOne(context.TODO(), filter, update)
+	updateItemInput := &dynamodb.UpdateItemInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":assets": {
+				B: assetsBuffer.Bytes(),
+			},
+		},
+		TableName: aws.String(directoryName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"Name": {
+				S: aws.String(name),
+			},
+		},
+		UpdateExpression: aws.String("set Assets = :assets"),
+	}
+
+	_, err = dynamoClient.UpdateItem(updateItemInput)
 	if err != nil {
 		logger(err)
 	}
@@ -198,7 +246,17 @@ func updateProgram(name string, assets []Asset) {
 
 func deleteDeadProgram(name string) {
 	logger("Deleting dead program \"" + name + "\"")
-	_, err := collection.DeleteOne(context.TODO(), bson.M{"name": name})
+
+	deleteItemInput := &dynamodb.DeleteItemInput{
+		Key: map[string]*dynamodb.AttributeValue{
+			"Name": {
+				S: aws.String(name),
+			},
+		},
+		TableName: aws.String(directoryName),
+	}
+
+	_, err := dynamoClient.DeleteItem(deleteItemInput)
 	if err != nil {
 		logger(err)
 	}

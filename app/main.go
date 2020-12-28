@@ -1,42 +1,65 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"os"
+
+	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
-var flog *log.Logger
+var (
+	dynamoClient  dynamodbiface.DynamoDBAPI
+	directoryName string
+)
+
+// Response is a struct for sending a response status
+type Response struct {
+	Status string `json:"status"`
+}
 
 func main() {
-	f, err := os.OpenFile("diff.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	directoryName = os.Getenv("DIRECTORY_NAME")
+	region := os.Getenv("AWS_REGION")
+	session, err := session.NewSession(&aws.Config{
+		Region: aws.String(region),
+	})
 	if err != nil {
 		logger(err)
 	}
-	defer f.Close()
-	flog = log.New(f, "diff-hackerone > ", log.LstdFlags)
+	dynamoClient = dynamodb.New(session)
+	lambda.Start(handler)
+}
 
-	connectToDatabase()
+func handler(ctx context.Context, response Response) (Response, error) {
 	directory := getDirectory()
-	storedDirectoryCount := getStoredDirectoryCount()
-
-	if storedDirectoryCount > 0 {
-		updateDirectory(directory)
-	} else {
-		insertFullDirectory(directory)
+	if !doesDirectoryExist() {
+		createNewDirectory(directory)
+		return createResponse("Created"), nil
 	}
+	updateDirectory(directory)
+	return createResponse("Updated"), nil
 }
 
 func logger(message interface{}) {
 	switch message.(type) {
 	case string:
 		log.Print(message)
-		flog.Print(message)
 	case error:
 		sendSlackErrorNotification(message.(error))
 		log.Fatal(message)
-		flog.Fatal(message)
 	default:
 		logger(errors.New("Unknown log type"))
+	}
+}
+
+func createResponse(status string) Response {
+	return Response{
+		Status: status,
 	}
 }
