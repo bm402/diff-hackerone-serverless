@@ -45,6 +45,10 @@ func getDirectory() map[string][]Asset {
 			for _, asset := range programNode.(map[string]interface{})["in_scope_assets"].(map[string]interface{})["edges"].([]interface{}) {
 				assetNode := asset.(map[string]interface{})["node"]
 
+				if assetNode.(map[string]interface{})["eligible_for_bounty"] == nil {
+					assetNode.(map[string]interface{})["eligible_for_bounty"] = false
+				}
+
 				asset := Asset{
 					Name:     assetNode.(map[string]interface{})["asset_identifier"].(string),
 					Type:     assetNode.(map[string]interface{})["asset_type"].(string),

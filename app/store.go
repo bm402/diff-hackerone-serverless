@@ -30,17 +30,13 @@ func createNewDirectory(directory map[string][]Asset) {
 	createTableInput := &dynamodb.CreateTableInput{
 		AttributeDefinitions: []*dynamodb.AttributeDefinition{
 			{
-				AttributeName: aws.String("Name"),
+				AttributeName: aws.String("name"),
 				AttributeType: aws.String("S"),
-			},
-			{
-				AttributeName: aws.String("Assets"),
-				AttributeType: aws.String("B"),
 			},
 		},
 		KeySchema: []*dynamodb.KeySchemaElement{
 			{
-				AttributeName: aws.String("Name"),
+				AttributeName: aws.String("name"),
 				KeyType:       aws.String("HASH"),
 			},
 		},
@@ -56,6 +52,15 @@ func createNewDirectory(directory map[string][]Asset) {
 		logger(err)
 	}
 
+	describeTableInput := &dynamodb.DescribeTableInput{
+		TableName: aws.String(directoryName),
+	}
+
+	err = dynamoClient.WaitUntilTableExists(describeTableInput)
+	if err != nil {
+		logger(err)
+	}
+
 	for name, assets := range directory {
 		directoryDocument := DirectoryDocument{
 			Name:   name,
@@ -65,7 +70,6 @@ func createNewDirectory(directory map[string][]Asset) {
 		if err != nil {
 			logger(err)
 		}
-
 		putItemInput := &dynamodb.PutItemInput{
 			Item:      dynamoDocument,
 			TableName: aws.String(directoryName),
