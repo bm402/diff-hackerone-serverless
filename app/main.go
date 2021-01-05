@@ -1,9 +1,6 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"log"
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -23,7 +20,7 @@ type Response struct {
 	Status string `json:"status"`
 }
 
-func main() {
+func init() {
 	directoryName = os.Getenv("DIRECTORY_NAME")
 	region := os.Getenv("AWS_REGION")
 	session, err := session.NewSession(&aws.Config{
@@ -33,33 +30,26 @@ func main() {
 		logger(err)
 	}
 	dynamoClient = dynamodb.New(session)
-	lambda.Start(handler)
 }
 
-func handler(ctx context.Context, response Response) (Response, error) {
+func handler() (Response, error) {
 	directory := getDirectory()
+
+	createResponse := func(status string) Response {
+		return Response{
+			Status: status,
+		}
+	}
+
 	if !doesDirectoryExist() {
 		createNewDirectory(directory)
-		return createResponse("Created"), nil
+		return createResponse("created"), nil
 	}
+
 	updateDirectory(directory)
-	return createResponse("Updated"), nil
+	return createResponse("updated"), nil
 }
 
-func logger(message interface{}) {
-	switch message.(type) {
-	case string:
-		log.Print(message)
-	case error:
-		sendSlackErrorNotification(message.(error))
-		log.Fatal(message)
-	default:
-		logger(errors.New("Unknown log type"))
-	}
-}
-
-func createResponse(status string) Response {
-	return Response{
-		Status: status,
-	}
+func main() {
+	lambda.Start(handler)
 }
