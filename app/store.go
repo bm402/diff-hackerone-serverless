@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/gob"
 	"errors"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -221,25 +219,21 @@ func insertNewProgram(name string, assets []Asset) {
 }
 
 func updateProgram(name string, assets []Asset) {
-	var assetsBuffer bytes.Buffer
-	err := gob.NewEncoder(&assetsBuffer).Encode(assets)
+	assetsMap := map[string]interface{}{":assets": assets}
+	dynamoAssets, err := dynamodbattribute.MarshalMap(assetsMap)
 	if err != nil {
 		logger(err)
 	}
 
 	updateItemInput := &dynamodb.UpdateItemInput{
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":assets": {
-				B: assetsBuffer.Bytes(),
-			},
-		},
-		TableName: aws.String(directoryName),
+		ExpressionAttributeValues: dynamoAssets,
+		TableName:                 aws.String(directoryName),
 		Key: map[string]*dynamodb.AttributeValue{
-			"Name": {
+			"name": {
 				S: aws.String(name),
 			},
 		},
-		UpdateExpression: aws.String("set Assets = :assets"),
+		UpdateExpression: aws.String("set assets = :assets"),
 	}
 
 	_, err = dynamoClient.UpdateItem(updateItemInput)
@@ -253,7 +247,7 @@ func deleteDeadProgram(name string) {
 
 	deleteItemInput := &dynamodb.DeleteItemInput{
 		Key: map[string]*dynamodb.AttributeValue{
-			"Name": {
+			"name": {
 				S: aws.String(name),
 			},
 		},
