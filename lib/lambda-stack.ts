@@ -1,7 +1,7 @@
 import * as codedeploy from '@aws-cdk/aws-codedeploy';
 import * as lambda from '@aws-cdk/aws-lambda';
 import * as ssm from '@aws-cdk/aws-ssm';
-import { App, Stack, StackProps } from '@aws-cdk/core';
+import { App, Duration, Stack, StackProps } from '@aws-cdk/core';
       
 export class LambdaStack extends Stack {
   public readonly lambdaCode: lambda.CfnParametersCode;
@@ -16,6 +16,8 @@ export class LambdaStack extends Stack {
       handler: 'main',
       runtime: lambda.Runtime.GO_1_X,
       description: `Function generated on: ${new Date().toISOString()}`,
+      timeout: Duration.seconds(120),
+      memorySize: 256,
       environment: {
         'DIRECTORY_NAME': ssm.StringParameter.fromStringParameterAttributes(this, 'DirectoryName', {
             parameterName: 'DIRECTORY_NAME',

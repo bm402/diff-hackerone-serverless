@@ -53,7 +53,7 @@ export class PipelineStack extends Stack {
           'base-directory': 'app',
           files: [
             '*.go',
-            'main'
+            'main',
           ],
         },
       }),
