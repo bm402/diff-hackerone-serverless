@@ -26,7 +26,7 @@ export class LambdaStack extends Stack {
         assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
         managedPolicies: [
             iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"),
-            iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonDynamoDBFullAccess"),
+            iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonDynamoDBFullAccess"),
         ],
     });
       
