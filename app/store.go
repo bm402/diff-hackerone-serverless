@@ -23,6 +23,7 @@ func getLocalDirectoryCount() int {
 	if err != nil {
 		logger(err)
 	}
+	// Note: item count only updates every 6 hours, not useful if an immediate or accurate count is required
 	itemCount := *tableMetadata.Table.ItemCount
 	logger(strconv.FormatInt(itemCount, 10) + " programs found in " + directoryName)
 	return int(itemCount)
