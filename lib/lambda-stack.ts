@@ -1,4 +1,5 @@
 import * as codedeploy from '@aws-cdk/aws-codedeploy';
+import * as dynamodb from '@aws-cdk/aws-dynamodb';
 import * as lambda from '@aws-cdk/aws-lambda';
 import * as ssm from '@aws-cdk/aws-ssm';
 import { App, Duration, Stack, StackProps } from '@aws-cdk/core';
@@ -10,6 +11,15 @@ export class LambdaStack extends Stack {
     super(app, id, props);
       
     this.lambdaCode = lambda.Code.fromCfnParameters();
+
+    const table = new dynamodb.Table(this, 'Table', {
+      partitionKey: { 
+          name: 'name',
+          type: dynamodb.AttributeType.STRING,
+      },
+      readCapacity: 2,
+      writeCapacity: 2,
+    });
       
     const func = new lambda.Function(this, 'Lambda', {
       code: this.lambdaCode,
@@ -19,9 +29,7 @@ export class LambdaStack extends Stack {
       timeout: Duration.seconds(120),
       memorySize: 256,
       environment: {
-        'DIRECTORY_NAME': ssm.StringParameter.fromStringParameterAttributes(this, 'DirectoryName', {
-            parameterName: 'DIRECTORY_NAME',
-        }).stringValue,
+        'DIRECTORY_NAME': table.tableName,
         'SLACK_WEBHOOK_URL': ssm.StringParameter.fromStringParameterAttributes(this, 'SlackWebhookUrl', {
             parameterName: 'SLACK_WEBHOOK_URL',
         }).stringValue,

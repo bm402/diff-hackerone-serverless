@@ -14,72 +14,7 @@ type DirectoryDocument struct {
 	Assets []Asset `json:"assets"`
 }
 
-func doesDirectoryExist() bool {
-	describeTableInput := &dynamodb.DescribeTableInput{
-		TableName: aws.String(directoryName),
-	}
-	_, err := dynamoClient.DescribeTable(describeTableInput)
-	return err == nil
-}
-
-func createNewDirectory(directory map[string][]Asset) {
-	logger("Creating " + directoryName + " and inserting all items")
-
-	createTableInput := &dynamodb.CreateTableInput{
-		AttributeDefinitions: []*dynamodb.AttributeDefinition{
-			{
-				AttributeName: aws.String("name"),
-				AttributeType: aws.String("S"),
-			},
-		},
-		KeySchema: []*dynamodb.KeySchemaElement{
-			{
-				AttributeName: aws.String("name"),
-				KeyType:       aws.String("HASH"),
-			},
-		},
-		ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-			ReadCapacityUnits:  aws.Int64(2),
-			WriteCapacityUnits: aws.Int64(2),
-		},
-		TableName: aws.String(directoryName),
-	}
-
-	_, err := dynamoClient.CreateTable(createTableInput)
-	if err != nil {
-		logger(err)
-	}
-
-	describeTableInput := &dynamodb.DescribeTableInput{
-		TableName: aws.String(directoryName),
-	}
-
-	err = dynamoClient.WaitUntilTableExists(describeTableInput)
-	if err != nil {
-		logger(err)
-	}
-
-	for name, assets := range directory {
-		directoryDocument := DirectoryDocument{
-			Name:   name,
-			Assets: assets,
-		}
-		dynamoDocument, err := dynamodbattribute.MarshalMap(directoryDocument)
-		if err != nil {
-			logger(err)
-		}
-		putItemInput := &dynamodb.PutItemInput{
-			Item:      dynamoDocument,
-			TableName: aws.String(directoryName),
-		}
-		_, err = dynamoClient.PutItem(putItemInput)
-		if err != nil {
-			logger(err)
-		}
-	}
-}
-
-func updateDirectory(directory map[string][]Asset) {
+func updateLocalDirectory(directory map[string][]Asset) {
 	logger("Updating " + directoryName)
 
 	// Get full existing directory

@@ -22,7 +22,7 @@ type Asset struct {
 	Bounty   bool   `json:"bounty"`
 }
 
-func getDirectory() map[string][]Asset {
+func getDirectoryFromHackerOne() map[string][]Asset {
 	logger("Retrieving directory from HackerOne")
 
 	directory := make(map[string][]Asset)

@@ -33,21 +33,11 @@ func init() {
 }
 
 func handler() (Response, error) {
-	directory := getDirectory()
-
-	createResponse := func(status string) Response {
-		return Response{
-			Status: status,
-		}
-	}
-
-	if !doesDirectoryExist() {
-		createNewDirectory(directory)
-		return createResponse("created"), nil
-	}
-
-	updateDirectory(directory)
-	return createResponse("updated"), nil
+	externalDirectory := getDirectoryFromHackerOne()
+	updateLocalDirectory(externalDirectory)
+	return Response{
+		Status: "ok",
+	}, nil
 }
 
 func main() {
