@@ -1,5 +1,6 @@
 import * as codedeploy from '@aws-cdk/aws-codedeploy';
 import * as dynamodb from '@aws-cdk/aws-dynamodb';
+import * as iam from '@aws-cdk/aws-iam';
 import * as lambda from '@aws-cdk/aws-lambda';
 import * as ssm from '@aws-cdk/aws-ssm';
 import { App, Duration, Stack, StackProps } from '@aws-cdk/core';
@@ -20,12 +21,21 @@ export class LambdaStack extends Stack {
       readCapacity: 2,
       writeCapacity: 2,
     });
+
+    const executionRole = new iam.Role(this, 'ExecutionRole', {
+        assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        managedPolicies: [
+            iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"),
+            iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonDynamoDBFullAccess"),
+        ],
+    });
       
     const func = new lambda.Function(this, 'Lambda', {
       code: this.lambdaCode,
       handler: 'main',
       runtime: lambda.Runtime.GO_1_X,
       description: `Function generated on: ${new Date().toISOString()}`,
+      role: executionRole,
       timeout: Duration.seconds(120),
       memorySize: 256,
       environment: {
