@@ -73,7 +73,7 @@ export class PipelineStack extends Stack {
                 actionName: 'GitHub_Source',
                 owner: 'bncrypted',
                 repo: 'diff-hackerone-serverless',
-                oauthToken: SecretValue.ssmSecure('GITHUB_ACCESS_TOKEN', '1'),
+                oauthToken: SecretValue.secretsManager('GITHUB_ACCESS_TOKEN'),
                 output: sourceOutput,
                 branch: 'aws',
               })
