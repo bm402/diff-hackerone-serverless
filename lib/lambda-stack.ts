@@ -13,14 +13,14 @@ export class LambdaStack extends Stack {
       
     this.lambdaCode = lambda.Code.fromCfnParameters();
 
-    // const table = new dynamodb.Table(this, 'Table', {
-    //   partitionKey: { 
-    //       name: 'name',
-    //       type: dynamodb.AttributeType.STRING,
-    //   },
-    //   readCapacity: 2,
-    //   writeCapacity: 2,
-    // });
+    const table = new dynamodb.Table(this, 'Table', {
+      partitionKey: { 
+          name: 'name',
+          type: dynamodb.AttributeType.STRING,
+      },
+      readCapacity: 2,
+      writeCapacity: 2,
+    });
 
     const executionRole = new iam.Role(this, 'ExecutionRole', {
         assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -39,7 +39,7 @@ export class LambdaStack extends Stack {
       timeout: Duration.seconds(120),
       memorySize: 256,
       environment: {
-        'DIRECTORY_NAME': 'placeholder',//table.tableName,
+        'DIRECTORY_NAME': table.tableName,
         'SLACK_WEBHOOK_URL': ssm.StringParameter.fromStringParameterAttributes(this, 'SlackWebhookUrl', {
             parameterName: 'SLACK_WEBHOOK_URL',
         }).stringValue,
