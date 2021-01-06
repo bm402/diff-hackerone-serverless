@@ -20,9 +20,8 @@ export class LambdaStack extends Stack {
         'DIRECTORY_NAME': ssm.StringParameter.fromStringParameterAttributes(this, 'DirectoryName', {
             parameterName: 'DIRECTORY_NAME',
         }).stringValue,
-        'SLACK_WEBHOOK_URL': ssm.StringParameter.fromSecureStringParameterAttributes(this, 'SlackWebhookUrl', {
+        'SLACK_WEBHOOK_URL': ssm.StringParameter.fromStringParameterAttributes(this, 'SlackWebhookUrl', {
             parameterName: 'SLACK_WEBHOOK_URL',
-            version: 1,
         }).stringValue,
       },
     });
