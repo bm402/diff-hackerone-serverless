@@ -76,7 +76,7 @@ export class PipelineStack extends Stack {
                 repo: 'diff-hackerone-serverless',
                 oauthToken: SecretValue.secretsManager('GITHUB_ACCESS_TOKEN'),
                 output: sourceOutput,
-                branch: 'aws',
+                branch: 'main',
               })
           ],
         },
