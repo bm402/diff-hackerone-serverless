@@ -52,7 +52,8 @@ export class PipelineStack extends Stack {
         artifacts: {
           'base-directory': 'app',
           files: [
-            '*.go'
+            '*.go',
+            'main'
           ],
         },
       }),
@@ -67,7 +68,7 @@ export class PipelineStack extends Stack {
     new codepipeline.Pipeline(this, 'Pipeline', {
       stages: [
         {
-          stageName: 'GitHub_Source',
+          stageName: 'Source',
           actions: [
             new codepipeline_actions.GitHubSourceAction({
                 actionName: 'GitHub_Source',
