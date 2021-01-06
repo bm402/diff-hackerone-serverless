@@ -34,9 +34,18 @@ func init() {
 
 func handler() (Response, error) {
 	externalDirectory := getDirectoryFromHackerOne()
+	localDirectoryCount := getLocalDirectoryCount()
+
+	if localDirectoryCount == 0 {
+		populateEmptyLocalDirectory(externalDirectory)
+		return Response{
+			Status: "created",
+		}, nil
+	}
+
 	updateLocalDirectory(externalDirectory)
 	return Response{
-		Status: "ok",
+		Status: "updated",
 	}, nil
 }
 

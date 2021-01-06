@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -14,8 +15,43 @@ type DirectoryDocument struct {
 	Assets []Asset `json:"assets"`
 }
 
+func getLocalDirectoryCount() int {
+	describeTableInput := &dynamodb.DescribeTableInput{
+		TableName: aws.String(directoryName),
+	}
+	tableMetadata, err := dynamoClient.DescribeTable(describeTableInput)
+	if err != nil {
+		logger(err)
+	}
+	itemCount := *tableMetadata.Table.ItemCount
+	logger(strconv.FormatInt(itemCount, 10) + " programs found in " + directoryName)
+	return int(itemCount)
+}
+
+func populateEmptyLocalDirectory(directory map[string][]Asset) {
+	logger("Creating all programs in " + directoryName)
+	for name, assets := range directory {
+		directoryDocument := DirectoryDocument{
+			Name:   name,
+			Assets: assets,
+		}
+		dynamoDocument, err := dynamodbattribute.MarshalMap(directoryDocument)
+		if err != nil {
+			logger(err)
+		}
+		putItemInput := &dynamodb.PutItemInput{
+			Item:      dynamoDocument,
+			TableName: aws.String(directoryName),
+		}
+		_, err = dynamoClient.PutItem(putItemInput)
+		if err != nil {
+			logger(err)
+		}
+	}
+}
+
 func updateLocalDirectory(directory map[string][]Asset) {
-	logger("Updating " + directoryName)
+	logger("Updating programs in " + directoryName)
 
 	// Get full existing directory
 	scanInput := &dynamodb.ScanInput{
