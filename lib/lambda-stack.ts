@@ -1,8 +1,10 @@
 import * as codedeploy from '@aws-cdk/aws-codedeploy';
 import * as dynamodb from '@aws-cdk/aws-dynamodb';
+import * as event from '@aws-cdk/aws-events';
 import * as iam from '@aws-cdk/aws-iam';
 import * as lambda from '@aws-cdk/aws-lambda';
 import * as ssm from '@aws-cdk/aws-ssm';
+import * as target from '@aws-cdk/aws-events-targets';
 import { App, Duration, Stack, StackProps } from '@aws-cdk/core';
       
 export class LambdaStack extends Stack {
@@ -49,6 +51,14 @@ export class LambdaStack extends Stack {
     const alias = new lambda.Alias(this, 'LambdaAlias', {
       aliasName: 'dev',
       version: func.currentVersion,
+    });
+
+    const lambdaTarget = new target.LambdaFunction(func)
+    new event.Rule(this, 'ScheduleRule', {
+        schedule: event.Schedule.rate(Duration.minutes(15)),
+        targets: [
+            lambdaTarget,
+        ]
     });
       
     new codedeploy.LambdaDeploymentGroup(this, 'DeploymentGroup', {
