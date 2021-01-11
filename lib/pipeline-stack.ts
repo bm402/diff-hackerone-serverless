@@ -113,6 +113,7 @@ export class PipelineStack extends Stack {
           ],
         },
       ],
+      crossAccountKeys: false,
     });
   }
 }
