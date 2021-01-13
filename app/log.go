@@ -5,6 +5,7 @@ import (
 	"log"
 )
 
+// Writes logs and error logs; on error, sends a Slack notification and exits the program
 func logger(message interface{}) {
 	switch message.(type) {
 	case string:

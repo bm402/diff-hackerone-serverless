@@ -20,6 +20,7 @@ type Response struct {
 	Status string `json:"status"`
 }
 
+// Initialises the connection to DynamoDB
 func init() {
 	directoryName = os.Getenv("DIRECTORY_NAME")
 	region := os.Getenv("AWS_REGION")
@@ -32,6 +33,7 @@ func init() {
 	dynamoClient = dynamodb.New(session)
 }
 
+// Lambda function handler
 func handler() (Response, error) {
 	externalDirectory := getDirectoryFromHackerOne()
 	localDirectoryCount := getLocalDirectoryCount()
@@ -49,6 +51,7 @@ func handler() (Response, error) {
 	}, nil
 }
 
+// Application entry point
 func main() {
 	lambda.Start(handler)
 }

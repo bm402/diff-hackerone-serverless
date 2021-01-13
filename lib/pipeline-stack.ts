@@ -4,14 +4,22 @@ import * as codepipeline_actions from '@aws-cdk/aws-codepipeline-actions';
 import * as lambda from '@aws-cdk/aws-lambda';
 import { App, Stack, StackProps, SecretValue } from '@aws-cdk/core';
 
+/**
+ * Adds the lambdaCode parameter to the StackProps class.
+ */
 export interface PipelineStackProps extends StackProps {
   readonly lambdaCode: lambda.CfnParametersCode;
 }
 
+/**
+ * Defines a CloudFormation stack for the CICD pipeline to be used to deploy the application
+ * from source hosted on GitHub to AWS serverless infrastructure.
+ */
 export class PipelineStack extends Stack {
   constructor(app: App, id: string, props: PipelineStackProps) {
     super(app, id, props);
 
+    // Creates the Lambda stack CloudFormation template using the CDK
     const cdkBuild = new codebuild.PipelineProject(this, 'CdkBuild', {
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
@@ -38,6 +46,7 @@ export class PipelineStack extends Stack {
       },
     });
 
+    // Compiles the Lambda function code
     const lambdaBuild = new codebuild.PipelineProject(this, 'LambdaBuild', {
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
@@ -52,7 +61,6 @@ export class PipelineStack extends Stack {
         artifacts: {
           'base-directory': 'app',
           files: [
-            '*.go',
             'main',
           ],
         },
@@ -62,9 +70,12 @@ export class PipelineStack extends Stack {
       },
     });
 
+    // Pipeline artifacts stored in S3
     const sourceOutput = new codepipeline.Artifact();
     const cdkBuildOutput = new codepipeline.Artifact('CdkBuildOutput');
     const lambdaBuildOutput = new codepipeline.Artifact('LambdaBuildOutput');
+
+    // Creates the CICD pipeline with source, build and deploy stages
     new codepipeline.Pipeline(this, 'Pipeline', {
       stages: [
         {
