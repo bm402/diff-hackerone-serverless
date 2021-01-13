@@ -16,6 +16,7 @@ type SlackRequestBody struct {
 	IconEmoji string `json:"icon_emoji"`
 }
 
+// Creates a Slack notification body to send to Slack
 func sendSlackNotification(channel string, message string, isPaid bool) {
 	slackRequestBody := SlackRequestBody{
 		Channel:   "#" + channel,
@@ -30,6 +31,7 @@ func sendSlackNotification(channel string, message string, isPaid bool) {
 	sendRequestToSlack(slackRequestBody)
 }
 
+// Creates a Slack error notification body to send to Slack
 func sendSlackErrorNotification(err error) {
 	slackRequestBody := SlackRequestBody{
 		Channel:   "#errors",
@@ -41,6 +43,7 @@ func sendSlackErrorNotification(err error) {
 	sendRequestToSlack(slackRequestBody)
 }
 
+// Sends the Slack notification body to the Slack webhook URL
 func sendRequestToSlack(slackRequestBody SlackRequestBody) {
 	webhookURL := os.Getenv("SLACK_WEBHOOK_URL")
 	if webhookURL == "" {

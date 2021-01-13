@@ -15,6 +15,7 @@ type DirectoryDocument struct {
 	Assets []Asset `json:"assets"`
 }
 
+// Retrieves the number of programs in the local directory
 func getLocalDirectoryCount() int {
 	describeTableInput := &dynamodb.DescribeTableInput{
 		TableName: aws.String(directoryName),
@@ -29,6 +30,7 @@ func getLocalDirectoryCount() int {
 	return int(itemCount)
 }
 
+// Fills an empty local directory with the full program listing
 func populateEmptyLocalDirectory(directory map[string][]Asset) {
 	logger("Creating all programs in " + directoryName)
 	for name, assets := range directory {
@@ -51,6 +53,9 @@ func populateEmptyLocalDirectory(directory map[string][]Asset) {
 	}
 }
 
+// Scans the local directory and the directory retrieved from HackerOne to look for new programs,
+// updated programs or deleted programs. For each change, it updates the local directory and sends
+// a Slack notification detailing the change
 func updateLocalDirectory(directory map[string][]Asset) {
 	logger("Updating programs in " + directoryName)
 
@@ -157,6 +162,7 @@ func updateLocalDirectory(directory map[string][]Asset) {
 	}
 }
 
+// Inserts a new program to the local directory and sends a Slack notification detailing the new program
 func insertNewProgram(name string, assets []Asset) {
 	logger("New program \"" + name + "\" found with the following assets:")
 	slackMessage := "New program \"" + name + "\" found with the following assets:\n"
@@ -190,6 +196,7 @@ func insertNewProgram(name string, assets []Asset) {
 	}
 }
 
+// Updates a program in the local directory
 func updateProgram(name string, assets []Asset) {
 	assetsMap := map[string]interface{}{":assets": assets}
 	dynamoAssets, err := dynamodbattribute.MarshalMap(assetsMap)
@@ -214,6 +221,7 @@ func updateProgram(name string, assets []Asset) {
 	}
 }
 
+// Deletes a program that is no longer open or public in the local directory
 func deleteDeadProgram(name string) {
 	logger("Deleting dead program \"" + name + "\"")
 
@@ -232,6 +240,7 @@ func deleteDeadProgram(name string) {
 	}
 }
 
+// Creates a one-line string detailing an asset for a program
 func stringifyAsset(asset Asset) string {
 	str := "[ " + asset.Name + " | " + asset.Type + " | " + asset.Severity + " | "
 	if asset.Bounty {
@@ -242,6 +251,7 @@ func stringifyAsset(asset Asset) string {
 	return str + " ]"
 }
 
+// Searches for a given asset in a list of assets
 func findAsset(name string, assetType string, assets []Asset) (Asset, error) {
 	for _, asset := range assets {
 		if asset.Name == name && asset.Type == assetType {

@@ -22,6 +22,8 @@ type Asset struct {
 	Bounty   bool   `json:"bounty"`
 }
 
+// Retrieves the full HackerOne program directory and extracts the program names
+// and lists of asset urls, types, severities and bounty eligibilities
 func getDirectoryFromHackerOne() map[string][]Asset {
 	logger("Retrieving directory from HackerOne")
 
@@ -34,6 +36,7 @@ func getDirectoryFromHackerOne() map[string][]Asset {
 		var directoryPageMap = make(map[string]interface{})
 		json.Unmarshal([]byte(directoryPageJSON), &directoryPageMap)
 
+		// TODO: there must be a better way of parsing the data than this?
 		hasNextPage = directoryPageMap["data"].(map[string]interface{})["teams"].(map[string]interface{})["pageInfo"].(map[string]interface{})["hasNextPage"].(bool)
 		cursor = directoryPageMap["data"].(map[string]interface{})["teams"].(map[string]interface{})["pageInfo"].(map[string]interface{})["endCursor"].(string)
 
@@ -64,13 +67,18 @@ func getDirectoryFromHackerOne() map[string][]Asset {
 	return directory
 }
 
+// Sends a request to the HackerOne GraphQL endpoint to retrieve a single page of directory listings
+// determined by the cursor parameter
 func getDirectoryPageJSON(cursor string) string {
+	operationName := "DirectoryQuery"
+
+	// GraphQL variables for filtering the data to only return open programs
 	variablesJSON := `{"where":{"_and":[{"_or":[{"submission_state":{"_eq":"open"}},{"submission_state":{"_eq":"api_only"}},{"external_program":{}}]},{"_not":{"external_program":{}}},{"_or":[{"_and":[{"state":{"_neq":"sandboxed"}},{"state":{"_neq":"soft_launched"}}]},{"external_program":{}}]}]},"secureOrderBy":{"started_accepting_at":{"_direction":"DESC"}}}`
 	var variables map[string]interface{}
 	json.Unmarshal([]byte(variablesJSON), &variables)
 	variables["cursor"] = cursor
 
-	operationName := "DirectoryQuery"
+	// GraphQL query to return program names and asset urls, types, severities and bounty eligibilities
 	query := "query DirectoryQuery($cursor: String, $secureOrderBy: FiltersTeamFilterOrder, $where: FiltersTeamFilterInput) { teams(first: 100, after: $cursor, secure_order_by: $secureOrderBy, where: $where) {pageInfo { endCursor hasNextPage } edges { node { handle in_scope_assets: structured_scopes(first: 500, archived: false, eligible_for_submission: true) { edges { node { asset_type asset_identifier max_severity eligible_for_bounty }}}}}}}"
 
 	requestBody := GqlDirectoryRequestBody{
